@@ -76,7 +76,7 @@ Repositório GitHub: https://github.com/SuelenAline/desenrola-software-quality
 
 Board do projeto: https://github.com/users/SuelenAline/projects/1/views/1
 
-Vídeo da entrega: ADICIONAR_LINK_DO_VIDEO
+AC1: [Vídeo do AC1](https://www.youtube.com/watch?v=OIpXee4lDQ8)
 
 Integrantes
 
