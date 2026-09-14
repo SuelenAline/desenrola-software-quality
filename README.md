@@ -1,4 +1,8 @@
-﻿Desenrola — Software Quality
+﻿# Desenrola — Software Quality
+
+ <img width="1901" height="947" alt="image" src="https://github.com/user-attachments/assets/62261735-e0aa-4742-970c-8dce750e9442" />
+
+
 
 Sistema de gestão financeira pessoal desenvolvido como aplicação full stack para a disciplina Projeto de Software.
 
