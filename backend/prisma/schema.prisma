@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  type        String
+  createdAt   DateTime @default(now())
+  // Nullable only to preserve legacy transactions without assigning them to strangers.
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  passwordHash String
+  tokenVersion Int           @default(0)
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}

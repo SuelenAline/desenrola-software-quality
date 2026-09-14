@@ -1,0 +1,19 @@
+{
+  "name": "desenrola-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/domain.js",
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "npm --prefix ../backend run build && playwright test"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
