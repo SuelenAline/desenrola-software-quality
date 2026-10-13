@@ -336,3 +336,25 @@ scrypt e comparação de hashes no Node.js.
 Assinatura e verificação JWT com jose.
 
 Limitação de requisições com express-rate-limit.
+# Dashboard financeiro
+
+Acesse **Dashboard** no menu lateral (`/#/dashboard`) para consultar receitas,
+despesas e saldo dos lançamentos do usuário autenticado no período selecionado. Os valores são
+exibidos em reais; o botão **Atualizar resumo** consulta novamente o banco.
+
+O endpoint autenticado `GET /transactions/summary` agrega os valores no PostgreSQL
+por tipo e usuário, e retorna `income`, `expense` e `balance` como strings decimais
+com duas casas. O saldo é calculado como receitas menos despesas. Uma conta sem
+lançamentos retorna `"0.00"` nos três campos. Não é necessária nova migração.
+
+O Dashboard inicia no mês atual e permite filtrar por dia, semana (segunda a
+domingo) ou mês, usando uma data de referência. A data considerada é `createdAt`,
+em fuso fixo UTC−3. Totais e gráficos usam o mesmo período.
+
+`GET /transactions/dashboard?period=month&date=2026-10-13` consulta somente os
+lançamentos do usuário no intervalo e retorna os totais e a série `daily`, incluindo
+dias zerados. `period` aceita `day`, `week` e `month`. Os gráficos permitem visualizar
+entradas, saídas ou ambas por dia, com tabela de valores e saldo diário.
+
+Execute `npm run test:dashboard` em `frontend` para testar filtros, gráficos,
+estados de erro e layout móvel no navegador com API simulada, sem depender do banco.

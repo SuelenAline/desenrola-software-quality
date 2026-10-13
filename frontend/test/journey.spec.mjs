@@ -63,6 +63,19 @@ test("complete account and transaction journey against the real local API", asyn
       path: "test-results/transactions-desktop.png",
       fullPage: true,
     });
+    await page.getByRole("link", { name: "Dashboard", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Dashboard financeiro" })).toBeVisible();
+    await expect(page.locator(".balance strong")).toContainText("3.074,10");
+    await expect(page.locator(".summary-card").nth(1)).toContainText("3.200,00");
+    await expect(page.locator(".summary-card").nth(2)).toContainText("125,90");
+    await page.reload();
+    await expect(page.locator(".balance strong")).toContainText("3.074,10");
+    await page.screenshot({ path: "test-results/dashboard-desktop.png", fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "test-results/dashboard-mobile.png", fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole("link", { name: "Ver minhas transações", exact: true }).click();
     await page.getByLabel("Buscar transações").fill("mercado");
     await expect(
       page.getByRole("cell", { name: "Salário", exact: true }),

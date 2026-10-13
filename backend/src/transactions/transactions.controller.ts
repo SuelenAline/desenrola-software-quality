@@ -7,6 +7,7 @@
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -16,6 +17,8 @@ import { TransactionIdPipe } from './transaction-id.pipe.js';
 
 import { AuthGuard } from '../auth/auth.guard.js';
 import { CurrentUserId } from '../auth/current-user.decorator.js';
+import { DashboardQueryDto } from './dashboard.dto.js';
+import { dashboardRange, dashboardSummary } from './dashboard.js';
 
 @Controller('transactions')
 @UseGuards(AuthGuard)
@@ -25,6 +28,35 @@ export class TransactionsController {
   @Get()
   async findAll(@CurrentUserId() userId: number) {
     return this.prisma.transaction.findMany({ where: { userId } });
+  }
+
+  @Get('dashboard')
+  async dashboard(@CurrentUserId() userId: number, @Query() query: DashboardQueryDto) {
+    const range = dashboardRange(query);
+    const transactions = await this.prisma.transaction.findMany({
+      where: { userId, createdAt: { gte: range.start, lt: range.end } },
+      select: { createdAt: true, type: true, amount: true },
+    });
+    return dashboardSummary(range, transactions);
+  }
+
+  @Get('summary')
+  async summary(@CurrentUserId() userId: number) {
+    const groups = await this.prisma.transaction.groupBy({
+      by: ['type'],
+      where: { userId },
+      _sum: { amount: true },
+    });
+    const total = (type: string) =>
+      groups.find((group) => group.type === type)?._sum.amount ??
+      new Prisma.Decimal(0);
+    const income = total('Receita');
+    const expense = total('Despesa');
+    return {
+      income: income.toFixed(2),
+      expense: expense.toFixed(2),
+      balance: income.minus(expense).toFixed(2),
+    };
   }
 
   // Preserve the raw parameter until TransactionIdPipe validates its syntax.

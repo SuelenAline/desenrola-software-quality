@@ -1539,6 +1539,34 @@ dialog .field {
     font-size: 9px;
   }
 }
+.dashboard-controls, .chart-panel { padding: 24px; margin-bottom: 24px; }
+.dashboard-controls form { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+.dashboard-controls .field { flex: 1 1 180px; margin: 0; }
+.dashboard-controls .muted { margin-bottom: 0; font-size: 12px; line-height: 1.7; }
+.dashboard-controls select, .chart-selector select { width: 100%; padding: 12px; border: 1px solid var(--border, #d9e1db); border-radius: 8px; background: white; color: inherit; font: inherit; }
+.dashboard-period { font-size: 13px; line-height: 1.7; }
+.chart-selector { max-width: 350px; }
+.chart-legend { display: flex; gap: 24px; margin: 20px 0; font-size: 13px; }
+.chart-legend span { display: flex; gap: 8px; align-items: center; }
+.chart-swatch { width: 12px; height: 12px; border-radius: 3px; }
+.chart-swatch.income, .chart-bar.income { background: #237658; }
+.chart-swatch.expense, .chart-bar.expense { background: #c45b39; }
+.daily-chart { display: flex; gap: 12px; margin: 24px 0; }
+.chart-scale { display: flex; flex-direction: column; justify-content: space-between; height: 200px; min-width: 65px; font-size: 11px; }
+.chart-scroll { min-width: 0; flex: 1; overflow-x: auto; padding-bottom: 12px; }
+.chart-columns { display: flex; min-width: 100%; width: max-content; gap: 12px; }
+.chart-day { flex: 1 0 48px; text-align: center; font-size: 10px; }
+.chart-bars { height: 200px; display: flex; align-items: end; justify-content: center; gap: 4px; border-bottom: 1px solid #9eafa5; background: repeating-linear-gradient(to top, transparent 0, transparent 49px, #e7ede8 49px, #e7ede8 50px); margin-bottom: 8px; }
+.chart-bar { width: 18px; border-radius: 4px 4px 0 0; }
+.chart-empty { padding: 16px; background: #f4f6f2; border-radius: 8px; }
+.chart-details summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+.chart-details caption { text-align: left; padding: 12px; font-size: 12px; }
+.chart-details th[scope="row"] { white-space: nowrap; }
+@media (max-width: 600px) {
+  .dashboard-controls, .chart-panel { padding: 18px; }
+  .dashboard-controls .button { width: 100%; }
+  .chart-panel + .form-actions { flex-wrap: wrap; }
+}
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

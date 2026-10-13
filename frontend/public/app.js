@@ -2,10 +2,12 @@
   escapeHtml as esc,
   parseAmount,
   currency,
-  totals,
   filterTransactions,
 } from "./domain.js";
 
+import { dashboardToday, displayDay, financialChart } from "./dashboard.js";
+
+const dashboardFilters = { period: "month", date: dashboardToday(), chart: "comparison" };
 const app = document.querySelector("#app");
 const dialog = document.querySelector("#confirmation");
 let user = null;
@@ -169,12 +171,68 @@ function authPage(register) {
   });
 }
 function shell(active, content) {
-  app.innerHTML = `<div class="workspace"><aside class="sidebar">${brand()}<div class="nav-label">SEU ESPAÇO</div><nav aria-label="Navegação principal"><a class="nav-link ${active === "transactions" ? "active" : ""}" ${active === "transactions" ? 'aria-current="page"' : ""} href="#/transacoes">${icon("wallet")} Minhas transações</a><a class="nav-link ${active === "profile" ? "active" : ""}" ${active === "profile" ? 'aria-current="page"' : ""} href="#/perfil">${icon("user")} Meu perfil</a></nav><div class="sidebar-note"><span class="little-spark">✳</span><p>Pequenos hábitos.<br>Grandes mudanças.</p><span>Seu futuro começa no presente.</span></div><div class="sidebar-bottom"><div class="avatar">${esc(user.name.trim().charAt(0).toUpperCase())}</div><div class="user-caption"><strong>${esc(user.name)}</strong><span>Minha conta pessoal</span></div><button class="icon-button" id="logout" aria-label="Sair da conta" title="Sair da conta">${icon("logout")}</button></div></aside><div class="main-column"><header class="topbar"><span>Uma vida financeira mais leve.</span><span class="today">${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</span></header><main id="main" tabindex="-1" class="page">${content}</main><footer class="workspace-footer">Feito para simplificar o seu dia a dia.<span>desenrola.</span></footer></div></div>`;
+  app.innerHTML = `<div class="workspace"><aside class="sidebar">${brand()}<div class="nav-label">SEU ESPAÇO</div><nav aria-label="Navegação principal"><a class="nav-link ${active === "dashboard" ? "active" : ""}" ${active === "dashboard" ? 'aria-current="page"' : ""} href="#/dashboard">${icon("wallet")} Dashboard</a><a class="nav-link ${active === "transactions" ? "active" : ""}" ${active === "transactions" ? 'aria-current="page"' : ""} href="#/transacoes">${icon("wallet")} Minhas transações</a><a class="nav-link ${active === "profile" ? "active" : ""}" ${active === "profile" ? 'aria-current="page"' : ""} href="#/perfil">${icon("user")} Meu perfil</a></nav><div class="sidebar-note"><span class="little-spark">✳</span><p>Pequenos hábitos.<br>Grandes mudanças.</p><span>Seu futuro começa no presente.</span></div><div class="sidebar-bottom"><div class="avatar">${esc(user.name.trim().charAt(0).toUpperCase())}</div><div class="user-caption"><strong>${esc(user.name)}</strong><span>Minha conta pessoal</span></div><button class="icon-button" id="logout" aria-label="Sair da conta" title="Sair da conta">${icon("logout")}</button></div></aside><div class="main-column"><header class="topbar"><span>Uma vida financeira mais leve.</span><span class="today">${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</span></header><main id="main" tabindex="-1" class="page">${content}</main><footer class="workspace-footer">Feito para simplificar o seu dia a dia.<span>desenrola.</span></footer></div></div>`;
   document.querySelector("#logout").onclick = () =>
     logout("Você saiu da conta. Até a próxima!");
 }
 function heading(kicker, title, description, action = "") {
   return `<div class="page-heading"><div><span class="eyebrow">${kicker}</span><h1>${title}</h1><p class="muted">${description}</p></div>${action}</div>`;
+}
+function summaryCards(sum) {
+  return `<section class="summary" aria-label="Resumo financeiro"><article class="summary-card balance"><div><span>Saldo total</span>${icon("wallet")}</div><strong>${currency(sum.balance)}</strong><small>Receitas menos despesas</small></article><article class="summary-card"><div><span>Receitas</span><span class="stat-icon income">${icon("arrow")}</span></div><strong>${currency(sum.income)}</strong><small>O que entrou na sua conta</small></article><article class="summary-card"><div><span>Despesas</span><span class="stat-icon expense">${icon("down")}</span></div><strong>${currency(sum.expense)}</strong><small>O que saiu da sua conta</small></article></section>`;
+}
+async function dashboardPage(current) {
+  document.title = "Dashboard financeiro · Desenrola";
+  const header = heading(
+    "SUAS FINANÇAS EM UM SÓ LUGAR",
+    "Dashboard financeiro",
+    "Explore suas entradas, saídas e saldo por período.",
+    '<a class="button primary" href="#/transacoes/nova">' + icon("plus") + ' Nova transação</a>',
+  );
+  shell("dashboard", header + `<section class="panel dashboard-controls"><form id="dashboard-filter">
+    <label class="field">Período<select name="period" aria-label="Período">${[["day", "Por dia"], ["week", "Por semana"], ["month", "Por mês"]].map(([value, label]) => `<option value="${value}" ${dashboardFilters.period === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+    <label class="field">Data de referência<input type="date" name="date" required min="1900-01-01" max="9998-12-31" value="${dashboardFilters.date}"></label>
+    <button class="button primary" type="submit">Aplicar filtro</button>
+    </form><p class="muted">Data de cadastro · Fuso UTC−3 · Semana de segunda a domingo. Selecione qualquer dia da semana ou do mês desejado.</p></section>
+    <div id="dashboard-results" aria-live="polite"></div>`);
+  const form = document.querySelector("#dashboard-filter");
+  const results = document.querySelector("#dashboard-results");
+  let request = 0;
+  const load = async () => {
+    const version = ++request;
+    const query = new URLSearchParams({ period: dashboardFilters.period, date: dashboardFilters.date });
+    results.innerHTML = '<div class="panel loading" role="status">Carregando resumo financeiro…</div>';
+    try {
+      const sum = await api(`/transactions/dashboard?${query}`);
+      if (current !== generation || version !== request) return;
+      results.innerHTML = `<p class="dashboard-period">Período: <strong>${displayDay(sum.from)} a ${displayDay(sum.to)}</strong> · Saldo referente ao período selecionado</p>` + summaryCards(sum) +
+        `<section class="panel chart-panel"><label class="field chart-selector">Visualização do gráfico<select id="chart-mode" aria-label="Visualização do gráfico"><option value="comparison">Entradas versus saídas</option><option value="income">Detalhamento de entradas</option><option value="expense">Detalhamento de saídas</option></select></label><div id="financial-chart"></div></section><div class="form-actions"><a class="button secondary" href="#/transacoes">Ver minhas transações</a><button class="button secondary" id="refresh-summary">Atualizar resumo</button></div>`;
+      const selector = document.querySelector("#chart-mode");
+      selector.value = dashboardFilters.chart;
+      const draw = () => {
+        dashboardFilters.chart = selector.value;
+        document.querySelector("#financial-chart").innerHTML = financialChart(sum, selector.value);
+        document.querySelectorAll(".chart-bar").forEach(bar => {
+          bar.style.height = `${bar.dataset.height}%`;
+        });
+      };
+      selector.onchange = draw;
+      draw();
+      document.querySelector("#refresh-summary").onclick = load;
+    } catch (error) {
+      if (current !== generation || version !== request || !token) return;
+      results.innerHTML = `<div class="panel empty-state"><p role="alert">${esc(error.message)}</p><button class="button secondary" id="retry-dashboard">Tentar novamente</button></div>`;
+      document.querySelector("#retry-dashboard").onclick = load;
+    }
+  };
+  form.onsubmit = (event) => {
+    event.preventDefault();
+    const values = new FormData(form);
+    dashboardFilters.period = values.get("period");
+    dashboardFilters.date = values.get("date");
+    load();
+  };
+  await load();
 }
 async function transactionsPage(current) {
   document.title = "Minhas transações · Desenrola";
@@ -191,14 +249,16 @@ async function transactionsPage(current) {
     header +
       '<div class="panel loading" role="status">Buscando suas transações…</div>',
   );
-  const transactions = await api("/transactions");
+  const [transactions, sum] = await Promise.all([
+    api("/transactions"),
+    api("/transactions/summary"),
+  ]);
   if (current !== generation) return;
   transactions.sort((a, b) => b.id - a.id);
-  const sum = totals(transactions);
   shell(
     "transactions",
     header +
-      `<section class="summary" aria-label="Resumo financeiro"><article class="summary-card balance"><div><span>Saldo total</span>${icon("wallet")}</div><strong>${currency(sum.balance)}</strong><small>Receitas menos despesas</small></article><article class="summary-card"><div><span>Receitas</span><span class="stat-icon income">${icon("arrow")}</span></div><strong>${currency(sum.income)}</strong><small>O que entrou na sua conta</small></article><article class="summary-card"><div><span>Despesas</span><span class="stat-icon expense">${icon("down")}</span></div><strong>${currency(sum.expense)}</strong><small>O que saiu da sua conta</small></article></section>
+      `${summaryCards(sum)}
     <section class="panel transactions-panel"><div class="section-title"><div><h2>Seu histórico</h2><p>Todos os seus movimentos, em um só lugar.</p></div><span class="count-badge">${transactions.length} ${transactions.length === 1 ? "transação" : "transações"}</span></div><div class="filters"><label class="search-field">${icon("search")}<input id="search" aria-label="Buscar transações" placeholder="Buscar por descrição…" type="search"></label><label class="filter-type"><span>Tipo</span><select id="type-filter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option><option>Receita</option><option>Despesa</option></select></label></div><div id="transaction-list"></div><div class="table-footer">Valores em reais (BRL)<span id="shown-count" aria-live="polite"></span></div></section>`,
   );
   const draw = () => {
@@ -364,7 +424,8 @@ async function render() {
     if (current !== generation) return;
   }
   try {
-    if (route === "/perfil") profilePage();
+    if (route === "/dashboard") await dashboardPage(current);
+    else if (route === "/perfil") profilePage();
     else if (route === "/transacoes/nova") await transactionForm(null, current);
     else if (/^\/transacoes\/editar\/[1-9]\d*$/.test(route))
       await transactionForm(Number(route.split("/").pop()), current);
