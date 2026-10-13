@@ -1,8 +1,6 @@
 ﻿# Desenrola — Software Quality
 
- <img width="1901" height="947" alt="image" src="https://github.com/user-attachments/assets/62261735-e0aa-4742-970c-8dce750e9442" />
-
-
+<img width="1886" height="937" alt="image" src="https://github.com/user-attachments/assets/9d03a0f3-9c26-4f9c-9a34-c20b3926157e" />
 
 Sistema de gestão financeira pessoal desenvolvido como aplicação full stack para a disciplina Projeto de Software.
 
@@ -54,6 +52,7 @@ Repositório GitHub: https://github.com/SuelenAline/desenrola-software-quality
 Board do projeto: https://github.com/users/SuelenAline/projects/1/views/1
 
 AC1: [Vídeo do AC1](https://www.youtube.com/watch?v=OIpXee4lDQ8)
+AC2: [Vídeo do AC2](https://www.youtube.com/watch?v=Zt7DHMk4vHc)
 
 ## Integrantes
 
@@ -285,28 +284,3 @@ scrypt e comparação de hashes no Node.js.
 Assinatura e verificação JWT com jose.
 
 Limitação de requisições com express-rate-limit.
-<<<<<<< HEAD
-# Dashboard financeiro
-
-Acesse **Dashboard** no menu lateral (`/#/dashboard`) para consultar receitas,
-despesas e saldo dos lançamentos do usuário autenticado no período selecionado. Os valores são
-exibidos em reais; o botão **Atualizar resumo** consulta novamente o banco.
-
-O endpoint autenticado `GET /transactions/summary` agrega os valores no PostgreSQL
-por tipo e usuário, e retorna `income`, `expense` e `balance` como strings decimais
-com duas casas. O saldo é calculado como receitas menos despesas. Uma conta sem
-lançamentos retorna `"0.00"` nos três campos. Não é necessária nova migração.
-
-O Dashboard inicia no mês atual e permite filtrar por dia, semana (segunda a
-domingo) ou mês, usando uma data de referência. A data considerada é `createdAt`,
-em fuso fixo UTC−3. Totais e gráficos usam o mesmo período.
-
-`GET /transactions/dashboard?period=month&date=2026-10-13` consulta somente os
-lançamentos do usuário no intervalo e retorna os totais e a série `daily`, incluindo
-dias zerados. `period` aceita `day`, `week` e `month`. Os gráficos permitem visualizar
-entradas, saídas ou ambas por dia, com tabela de valores e saldo diário.
-
-Execute `npm run test:dashboard` em `frontend` para testar filtros, gráficos,
-estados de erro e layout móvel no navegador com API simulada, sem depender do banco.
-=======
->>>>>>> b32c1409609fef099568c19a865de085ea7034d1
