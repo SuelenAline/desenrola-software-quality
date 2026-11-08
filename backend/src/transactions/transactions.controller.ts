@@ -79,6 +79,7 @@ export class TransactionsController {
     @Body() data: CreateTransactionDto,
     @CurrentUserId() userId: number,
   ) {
+    await this.validateCategory(data.categoryId, userId);
     try {
       return await this.prisma.transaction.update({
         where: { id: Number(id), userId },
@@ -86,6 +87,7 @@ export class TransactionsController {
           description: data.description,
           amount: data.amount,
           type: data.type,
+          ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
         },
       });
     } catch (error) {
@@ -112,14 +114,22 @@ export class TransactionsController {
     @Body() data: CreateTransactionDto,
     @CurrentUserId() userId: number,
   ) {
+    await this.validateCategory(data.categoryId, userId);
     return this.prisma.transaction.create({
       data: {
         userId,
         description: data.description,
         amount: data.amount,
         type: data.type,
+        ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
       },
     });
+  }
+
+  private async validateCategory(categoryId: number | null | undefined, userId: number) {
+    if (categoryId == null) return;
+    const category = await this.prisma.category.findFirst({ where: { id: categoryId, userId }, select: { id: true } });
+    if (!category) throw new NotFoundException('Categoria não encontrada.');
   }
 
   private handleWriteError(error: unknown): never {

@@ -45,6 +45,9 @@ test("complete account and transaction journey against the real local API", asyn
     await page
       .getByRole("textbox", { name: "Valor", exact: true })
       .fill("125,90");
+    await page.getByLabel("Nome da categoria", { exact: true }).fill("Alimentação");
+    await page.getByRole("button", { name: "Criar categoria", exact: true }).click();
+    await expect(page.locator("#transaction-category option:checked")).toHaveText("Alimentação");
     await page.getByRole("button", { name: "Cadastrar transação" }).click();
     await expect(
       page.getByRole("cell", { name: "Mercado da semana", exact: true }),
@@ -76,6 +79,13 @@ test("complete account and transaction journey against the real local API", asyn
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.getByRole("link", { name: "Ver minhas transações", exact: true }).click();
+    await page.getByLabel("Filtrar por categoria").selectOption({ label: "Alimentação" });
+    await expect(page.getByRole("cell", { name: "Salário", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("cell", { name: "Mercado da semana", exact: true })).toBeVisible();
+    await page.getByLabel("Filtrar por categoria").selectOption("none");
+    await expect(page.getByRole("cell", { name: "Salário", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Mercado da semana", exact: true })).toHaveCount(0);
+    await page.getByLabel("Filtrar por categoria").selectOption("");
     await page.getByLabel("Buscar transações").fill("mercado");
     await expect(
       page.getByRole("cell", { name: "Salário", exact: true }),
@@ -87,6 +97,7 @@ test("complete account and transaction journey against the real local API", asyn
     await page.getByLabel("Buscar transações").fill("");
     await page.getByLabel("Filtrar por tipo").selectOption("");
     await page.getByRole("link", { name: "Editar Mercado da semana" }).click();
+    await expect(page.locator("#transaction-category option:checked")).toHaveText("Alimentação");
     await page
       .getByRole("textbox", { name: "Valor", exact: true })
       .fill("150,25");
@@ -109,6 +120,7 @@ test("complete account and transaction journey against the real local API", asyn
       page.getByRole("cell", { name: "Salário", exact: true }),
     ).toHaveCount(0);
     await page.reload();
+    await expect(page.getByRole("cell", { name: "Alimentação", exact: true })).toBeVisible();
     await expect(
       page.getByRole("cell", { name: "Mercado da semana", exact: true }),
     ).toBeVisible();
@@ -138,6 +150,7 @@ test("complete account and transaction journey against the real local API", asyn
       fullPage: true,
     });
     await page.getByRole("button", { name: "Sair da conta" }).click();
+    await expect(page.getByRole("heading", { name: "Bem-vindo de volta." })).toBeVisible();
     await page.getByLabel("E-mail", { exact: true }).fill(updatedEmail);
     await page.getByLabel("Senha", { exact: true }).fill("Wrong password");
     await page.getByRole("button", { name: "Entrar na minha conta" }).click();

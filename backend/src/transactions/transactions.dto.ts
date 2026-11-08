@@ -1,6 +1,8 @@
 import { Transform } from 'class-transformer';
 import {
   IsIn,
+  IsInt,
+  IsOptional,
   IsNotEmpty,
   IsNumber,
   IsString,
@@ -9,6 +11,12 @@ import {
 } from 'class-validator';
 
 export class CreateTransactionDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(2147483647)
+  categoryId?: number | null;
+
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )

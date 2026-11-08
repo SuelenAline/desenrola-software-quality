@@ -38,11 +38,12 @@ export function totals(transactions) {
     balance: (income - expense) / 100,
   };
 }
-export function filterTransactions(transactions, search = "", type = "") {
+export function filterTransactions(transactions, search = "", type = "", category = "") {
   const normalized = search.trim().toLocaleLowerCase("pt-BR");
   return transactions.filter(
     (item) =>
       (!type || item.type === type) &&
+      (!category || (category === "none" ? item.categoryId == null : item.categoryId === Number(category))) &&
       item.description.toLocaleLowerCase("pt-BR").includes(normalized),
   );
 }

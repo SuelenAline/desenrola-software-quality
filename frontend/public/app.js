@@ -234,6 +234,9 @@ async function dashboardPage(current) {
   };
   await load();
 }
+function categoryOptions(categories, selected) {
+  return categories.map(category => `<option value="${category.id}" ${category.id === selected ? 'selected' : ''}>${esc(category.name)}</option>`).join("");
+}
 async function transactionsPage(current) {
   document.title = "Minhas transações · Desenrola";
   const header = heading(
@@ -249,9 +252,10 @@ async function transactionsPage(current) {
     header +
       '<div class="panel loading" role="status">Buscando suas transações…</div>',
   );
-  const [transactions, sum] = await Promise.all([
+  const [transactions, sum, categories] = await Promise.all([
     api("/transactions"),
     api("/transactions/summary"),
+    api("/categories"),
   ]);
   if (current !== generation) return;
   transactions.sort((a, b) => b.id - a.id);
@@ -259,13 +263,14 @@ async function transactionsPage(current) {
     "transactions",
     header +
       `${summaryCards(sum)}
-    <section class="panel transactions-panel"><div class="section-title"><div><h2>Seu histórico</h2><p>Todos os seus movimentos, em um só lugar.</p></div><span class="count-badge">${transactions.length} ${transactions.length === 1 ? "transação" : "transações"}</span></div><div class="filters"><label class="search-field">${icon("search")}<input id="search" aria-label="Buscar transações" placeholder="Buscar por descrição…" type="search"></label><label class="filter-type"><span>Tipo</span><select id="type-filter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option><option>Receita</option><option>Despesa</option></select></label></div><div id="transaction-list"></div><div class="table-footer">Valores em reais (BRL)<span id="shown-count" aria-live="polite"></span></div></section>`,
+    <section class="panel transactions-panel"><div class="section-title"><div><h2>Seu histórico</h2><p>Todos os seus movimentos, em um só lugar.</p></div><span class="count-badge">${transactions.length} ${transactions.length === 1 ? "transação" : "transações"}</span></div><div class="filters"><label class="search-field">${icon("search")}<input id="search" aria-label="Buscar transações" placeholder="Buscar por descrição…" type="search"></label><label class="filter-type"><span>Tipo</span><select id="type-filter" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option><option>Receita</option><option>Despesa</option></select></label><label class="filter-type"><span>Categoria</span><select id="category-filter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option><option value="none">Sem categoria</option>${categoryOptions(categories)}</select></label></div><div id="transaction-list"></div><div class="table-footer">Valores em reais (BRL)<span id="shown-count" aria-live="polite"></span></div></section>`,
   );
   const draw = () => {
     const filtered = filterTransactions(
       transactions,
       document.querySelector("#search").value,
       document.querySelector("#type-filter").value,
+      document.querySelector("#category-filter").value,
     );
     document.querySelector("#shown-count").textContent =
       `${filtered.length} de ${transactions.length} transações`;
@@ -274,7 +279,7 @@ async function transactionsPage(current) {
       target.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon("wallet")}</div><h3>${transactions.length ? "Nenhuma transação encontrada" : "Seu primeiro passo começa aqui"}</h3><p>${transactions.length ? "Tente outra descrição ou altere o filtro." : "Cadastre uma receita ou despesa para começar a organizar suas finanças."}</p>${transactions.length ? "" : '<a class="button secondary" href="#/transacoes/nova">' + icon("plus") + " Cadastrar primeira transação</a>"}</div>`;
       return;
     }
-    target.innerHTML = `<div class="table-scroll"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Registrada em</th><th class="amount">Valor</th><th class="actions">Ações</th></tr></thead><tbody>${filtered.map((item) => `<tr><td><div class="description-cell"><span class="transaction-symbol ${item.type === "Receita" ? "income" : "expense"}">${icon(item.type === "Receita" ? "arrow" : "down")}</span><strong>${esc(item.description)}</strong></div></td><td><span class="pill ${item.type === "Receita" ? "income" : "expense"}">${esc(item.type)}</span></td><td class="date-cell">${date(item.createdAt)}</td><td class="amount ${item.type === "Receita" ? "positive" : ""}">${item.type === "Receita" ? "+" : "−"} ${currency(Number(item.amount))}</td><td><div class="row-actions"><a class="icon-button" href="#/transacoes/editar/${item.id}" aria-label="Editar ${esc(item.description)}" title="Editar">${icon("edit")}</a><button class="icon-button delete-transaction" data-id="${item.id}" aria-label="Excluir ${esc(item.description)}" title="Excluir">${icon("trash")}</button></div></td></tr>`).join("")}</tbody></table></div>`;
+    target.innerHTML = `<div class="table-scroll"><table><thead><tr><th>Descrição</th><th>Tipo</th><th>Categoria</th><th>Registrada em</th><th class="amount">Valor</th><th class="actions">Ações</th></tr></thead><tbody>${filtered.map((item) => `<tr><td><div class="description-cell"><span class="transaction-symbol ${item.type === "Receita" ? "income" : "expense"}">${icon(item.type === "Receita" ? "arrow" : "down")}</span><strong>${esc(item.description)}</strong></div></td><td><span class="pill ${item.type === "Receita" ? "income" : "expense"}">${esc(item.type)}</span></td><td>${esc(categories.find(category => category.id === item.categoryId)?.name || "Sem categoria")}</td><td class="date-cell">${date(item.createdAt)}</td><td class="amount ${item.type === "Receita" ? "positive" : ""}">${item.type === "Receita" ? "+" : "−"} ${currency(Number(item.amount))}</td><td><div class="row-actions"><a class="icon-button" href="#/transacoes/editar/${item.id}" aria-label="Editar ${esc(item.description)}" title="Editar">${icon("edit")}</a><button class="icon-button delete-transaction" data-id="${item.id}" aria-label="Excluir ${esc(item.description)}" title="Excluir">${icon("trash")}</button></div></td></tr>`).join("")}</tbody></table></div>`;
     target.querySelectorAll(".delete-transaction").forEach(
       (button) =>
         (button.onclick = () => {
@@ -296,11 +301,15 @@ async function transactionsPage(current) {
   };
   document.querySelector("#search").oninput = draw;
   document.querySelector("#type-filter").onchange = draw;
+  document.querySelector("#category-filter").onchange = draw;
   draw();
 }
 async function transactionForm(id, current) {
   document.title = `${id ? "Editar" : "Nova"} transação · Desenrola`;
   let item = { description: "", amount: "", type: "Despesa" };
+  shell("transactions", '<div class="panel loading" role="status">Carregando categorias...</div>');
+  const categories = await api("/categories");
+  if (current !== generation) return;
   if (id) {
     shell(
       "transactions",
@@ -314,8 +323,18 @@ async function transactionForm(id, current) {
     `<a class="back-link" href="#/transacoes">${icon("back")} Voltar para minhas transações</a>${heading("ORGANIZAÇÃO EM CADA DETALHE", id ? "Editar transação" : "Nova transação", id ? "Atualize os detalhes deste movimento." : "Registre um movimento e mantenha suas finanças em dia.")}
     <div class="form-layout"><section class="panel form-panel"><h2>Detalhes da transação</h2><p class="muted">Preencha as informações abaixo.</p><form id="transaction-form"><fieldset class="type-options"><legend>Tipo de transação</legend>${["Receita", "Despesa"].map((type) => `<label><input type="radio" name="type" value="${type}" ${item.type === type ? "checked" : ""}> <span>${icon(type === "Receita" ? "arrow" : "down")}${type}</span></label>`).join("")}</fieldset>
     ${field("Descrição", "description", { value: item.description, placeholder: "Ex.: mercado, salário, conta de luz", max: 500 })}
-    <label class="field">Valor<div class="money-input"><span>R$</span><input name="amount" aria-label="Valor" inputmode="decimal" value="${esc(String(item.amount).replace(".", ","))}" placeholder="0,00" required aria-describedby="amount-help"></div><small id="amount-help">Use até duas casas decimais, sem separador de milhar.</small></label>${errorBox}<div class="form-actions"><a class="button secondary" href="#/transacoes">Cancelar</a><button class="button primary" type="submit">${icon("check")} ${id ? "Salvar alterações" : "Cadastrar transação"}</button></div></form></section><aside class="tip-card"><span class="tip-icon">${icon("wallet")}</span><h3>Um hábito que faz a diferença.</h3><p>Registrar os pequenos movimentos ajuda você a enxergar o todo.</p><hr><p class="tip-caption">A transação fica vinculada à sua conta e aparece no seu histórico assim que for salva.</p></aside></div>`,
+    <label class="field">Categoria<select name="categoryId" id="transaction-category" aria-label="Categoria"><option value="">Sem categoria</option>${categoryOptions(categories, item.categoryId)}</select></label><p class="field-help">Crie uma categoria no painel ao lado para organizar seus lançamentos.</p>
+    <label class="field">Valor<div class="money-input"><span>R$</span><input name="amount" aria-label="Valor" inputmode="decimal" value="${esc(String(item.amount).replace(".", ","))}" placeholder="0,00" required aria-describedby="amount-help"></div><small id="amount-help">Use até duas casas decimais, sem separador de milhar.</small></label>${errorBox}<div class="form-actions"><a class="button secondary" href="#/transacoes">Cancelar</a><button class="button primary" type="submit">${icon("check")} ${id ? "Salvar alterações" : "Cadastrar transação"}</button></div></form></section><aside class="panel form-panel"><h2>Nova categoria</h2><p class="muted">Suas categorias ficam disponíveis em todos os seus lançamentos.</p><form id="category-form">${field("Nome da categoria", "name", { placeholder: "Ex.: Alimentação, Transporte, Salário", max: 80 })}${errorBox}<button type="submit" class="button secondary">Criar categoria</button></form><span class="tip-icon">${icon("wallet")}</span><h3>Um hábito que faz a diferença.</h3><p>Registrar os pequenos movimentos ajuda você a enxergar o todo.</p><hr><p class="tip-caption">A transação fica vinculada à sua conta e aparece no seu histórico assim que for salva.</p></aside></div>`,
   );
+  bindForm(document.querySelector("#category-form"), async (form) => {
+    const category = await api("/categories", { method: "POST", data: { name: form.get("name") } });
+    if (current !== generation) return;
+    categories.push(category);
+    categories.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    document.querySelector("#transaction-category").innerHTML = '<option value="">Sem categoria</option>' + categoryOptions(categories, category.id);
+    document.querySelector("#category-form").reset();
+    notify("Categoria criada e selecionada.");
+  });
   bindForm(document.querySelector("#transaction-form"), async (form) => {
     const description = form.get("description").trim();
     if (!description)
@@ -326,6 +345,7 @@ async function transactionForm(id, current) {
         description,
         amount: parseAmount(form.get("amount")),
         type: form.get("type"),
+        categoryId: form.get("categoryId") ? Number(form.get("categoryId")) : null,
       },
     });
     location.hash = "/transacoes";

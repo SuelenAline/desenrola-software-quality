@@ -1539,6 +1539,8 @@ dialog .field {
     font-size: 9px;
   }
 }
+.filters { flex-wrap: wrap; }
+#transaction-category { width: 100%; padding: 12px; border: 1px solid #d9e1db; border-radius: 8px; background: white; color: inherit; font: inherit; }
 .dashboard-controls, .chart-panel { padding: 24px; margin-bottom: 24px; }
 .dashboard-controls form { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
 .dashboard-controls .field { flex: 1 1 180px; margin: 0; }

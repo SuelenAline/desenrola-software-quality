@@ -285,7 +285,26 @@ scrypt e comparação de hashes no Node.js.
 Assinatura e verificação JWT com jose.
 
 Limitação de requisições com express-rate-limit.
-<<<<<<< HEAD
+# Categorias dos lançamentos
+
+No formulário de uma transação, use **Nova categoria** para cadastrar uma categoria
+e selecioná-la automaticamente. A seleção também pode ser alterada ao editar o
+lançamento. Registros antigos permanecem como **Sem categoria**.
+
+Na listagem, **Filtrar por categoria** combina-se com a busca por descrição e o
+filtro de tipo, atualizando a lista imediatamente. Categorias e lançamentos são
+carregados do banco; os cartões de resumo continuam representando o total da conta.
+
+As rotas autenticadas `GET /categories` e `POST /categories` listam e cadastram
+categorias privadas do usuário. O nome tem até 80 caracteres e não pode se repetir
+na mesma conta (ignorando maiúsculas e espaços excedentes). `POST /transactions` e
+`PUT /transactions/:id` aceitam `categoryId` ou `null` para remover a classificação.
+Categorias de outras contas não podem ser usadas.
+
+Para atualizar outra instalação, execute `npx prisma migrate deploy` e
+`npx prisma generate` em `backend`, depois reinicie a API. A migração de categorias
+preserva os lançamentos existentes.
+
 # Dashboard financeiro
 
 Acesse **Dashboard** no menu lateral (`/#/dashboard`) para consultar receitas,
@@ -308,5 +327,3 @@ entradas, saídas ou ambas por dia, com tabela de valores e saldo diário.
 
 Execute `npm run test:dashboard` em `frontend` para testar filtros, gráficos,
 estados de erro e layout móvel no navegador com API simulada, sem depender do banco.
-=======
->>>>>>> b32c1409609fef099568c19a865de085ea7034d1

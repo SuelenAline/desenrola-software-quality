@@ -16,8 +16,11 @@ model Transaction {
   // Nullable only to preserve legacy transactions without assigning them to strangers.
   userId      Int?
   user        User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([categoryId])
 }
 
 model User {
@@ -28,4 +31,16 @@ model User {
   tokenVersion Int           @default(0)
   createdAt    DateTime      @default(now())
   transactions Transaction[]
+  categories   Category[]
+}
+
+model Category {
+  id           Int @id @default(autoincrement())
+  name         String @db.VarChar(80)
+  normalizedName String @db.VarChar(80)
+  userId       Int
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, normalizedName])
 }

@@ -29,6 +29,7 @@ describe('HTTP transactions (compiled application, mocked persistence)', () => {
   before(async () => {
     process.env.JWT_SECRET = randomBytes(32).toString('hex');
     db = {
+      category: { findMany: mock.fn(), findFirst: mock.fn(), create: mock.fn() },
       user: { findUnique: async () => ({ id: 1, tokenVersion: 0 }) },
       transaction: Object.fromEntries(
         ['findMany', 'findUnique', 'create', 'update', 'delete', 'groupBy'].map((name) => [
@@ -47,6 +48,10 @@ describe('HTTP transactions (compiled application, mocked persistence)', () => {
     token = await app.get(TokenService).issue(1);
   });
   beforeEach(() => {
+    for (const fn of Object.values(db.category)) fn.mock.resetCalls();
+    db.category.findFirst.mock.mockImplementation(async () => ({ id: 5 }));
+    db.category.findMany.mock.mockImplementation(async () => [{ id: 5, name: 'Mercado' }]);
+    db.category.create.mock.mockImplementation(async () => ({ id: 5, name: 'Mercado' }));
     for (const fn of Object.values(db.transaction)) {
       fn.mock.resetCalls();
       fn.mock.mockImplementation(async () => transaction);
@@ -57,6 +62,50 @@ describe('HTTP transactions (compiled application, mocked persistence)', () => {
     await app?.close();
   });
 
+  it('lists only owned categories', async () => {
+    await request(app.getHttpServer()).get('/categories').auth(token, { type: 'bearer' }).expect(200, [{ id: 5, name: 'Mercado' }]);
+    assert.deepEqual(db.category.findMany.mock.calls[0].arguments[0].where, { userId: 1 });
+  });
+  it('creates a normalized category owned by the current user', async () => {
+    await request(app.getHttpServer()).post('/categories').auth(token, { type: 'bearer' }).send({ name: '  Mercado  ' }).expect(201);
+    assert.deepEqual(db.category.create.mock.calls[0].arguments[0].data, { name: 'Mercado', normalizedName: 'mercado', userId: 1 });
+  });
+  it('rejects duplicate category names', async () => {
+    db.category.create.mock.mockImplementation(async () => { throw new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: Prisma.prismaVersion.client }); });
+    await request(app.getHttpServer()).post('/categories').auth(token, { type: 'bearer' }).send({ name: 'Mercado' }).expect(409);
+  });
+  for (const data of [{}, { name: ' ' }, { name: 1 }, { name: 'a'.repeat(81) }, { name: 'Mercado', userId: 2 }]) {
+    it(`rejects invalid category ${JSON.stringify(data)}`, async () => {
+      await request(app.getHttpServer()).post('/categories').auth(token, { type: 'bearer' }).send(data).expect(400);
+    });
+  }
+  for (const method of ['get', 'post']) {
+    it(`protects ${method} categories`, async () => {
+      await request(app.getHttpServer())[method]('/categories').send({ name: 'Mercado' }).expect(401);
+    });
+  }
+  for (const method of ['post', 'put']) {
+    const path = method === 'post' ? '/transactions' : '/transactions/1';
+    it(`${method} saves and clears a category`, async () => {
+      for (const categoryId of [5, null]) {
+        await request(app.getHttpServer())[method](path).auth(token, { type: 'bearer' }).send({ ...payload, categoryId }).expect(method === 'post' ? 201 : 200);
+        const calls = db.transaction[method === 'post' ? 'create' : 'update'].mock.calls;
+        assert.equal(calls.at(-1).arguments[0].data.categoryId, categoryId);
+      }
+      assert.deepEqual(db.category.findFirst.mock.calls[0].arguments[0].where, { id: 5, userId: 1 });
+    });
+    it(`${method} refuses another user's or missing category`, async () => {
+      db.category.findFirst.mock.mockImplementation(async () => null);
+      await request(app.getHttpServer())[method](path).auth(token, { type: 'bearer' }).send({ ...payload, categoryId: 5 }).expect(404);
+      assert.equal(db.transaction.create.mock.callCount(), 0);
+      assert.equal(db.transaction.update.mock.callCount(), 0);
+    });
+    for (const categoryId of [0, -1, 1.5, '5', 2147483648]) {
+      it(`${method} rejects category ID ${categoryId}`, async () => {
+        await request(app.getHttpServer())[method](path).auth(token, { type: 'bearer' }).send({ ...payload, categoryId }).expect(400);
+      });
+    }
+  }
   it('GET /', async () => {
     await request(app.getHttpServer()).get('/').expect(200, 'Hello World!');
   });

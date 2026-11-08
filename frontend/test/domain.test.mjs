@@ -9,6 +9,18 @@ import {
   filterTransactions,
 } from "../public/domain.js";
 
+it("combines category, type and search filters including uncategorized records", () => {
+  const items = [
+    { id: 1, description: 'Mercado', type: 'Despesa', categoryId: 5 },
+    { id: 2, description: 'Mercado extra', type: 'Receita', categoryId: 5 },
+    { id: 3, description: 'Mercado antigo', type: 'Despesa', categoryId: null },
+    { id: 4, description: 'Salario', type: 'Receita', categoryId: 6 },
+  ];
+  assert.deepEqual(filterTransactions(items, 'mercado', 'Despesa', '5').map(item => item.id), [1]);
+  assert.deepEqual(filterTransactions(items, '', '', 'none').map(item => item.id), [3]);
+  assert.deepEqual(filterTransactions(items, '', '', '99'), []);
+  assert.equal(filterTransactions(items).length, 4);
+});
 it("parses Brazilian amounts without silently losing precision", () => {
   assert.equal(parseAmount("12,34"), 12.34);
   assert.equal(parseAmount("0"), 0);

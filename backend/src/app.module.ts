@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CategoriesController } from './categories/categories.controller.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { TransactionsController } from './transactions/transactions.controller.js';
@@ -11,7 +12,7 @@ import { TokenService } from './auth/token.service.js';
 
 @Module({
   imports: [],
-  controllers: [AppController, TransactionsController, AuthController],
+  controllers: [AppController, TransactionsController, AuthController, CategoriesController],
   providers: [
     AppService,
     PrismaService,
