@@ -6,7 +6,50 @@ Sistema de gestão financeira pessoal desenvolvido como aplicação full stack p
 
 O objetivo acadêmico é desenvolver um software com três camadas: frontend, backend e banco de dados. O Desenrola foi escolhido como solução para gerenciamento financeiro pessoal e será desenvolvido de forma incremental durante as entregas da disciplina.
 
-A aplicação possui autenticação de usuários, gerenciamento de perfil e CRUD de transações financeiras, mantendo os dados privados por conta.
+A aplicação possui autenticação de usuários, gerenciamento de perfil, CRUD de transações financeiras, dashboard com filtros de data e gráficos e cadastro de categorias, mantendo os dados privados por conta.
+
+## Etapas implementadas
+
+| Etapa | Funcionalidade entregue | Situação da implementação |
+| --- | --- | --- |
+| [AC1 — Cadastro e gerenciamento de lançamentos](#ac1--cadastro-e-gerenciamento-de-lançamentos) | Conta, autenticação e cadastro, consulta, edição e exclusão de receitas e despesas | Implementada |
+| [AC2 — Dashboard financeiro](#ac2--dashboard-financeiro) | Totais, filtros por dia, semana e mês e gráficos diários | Implementada |
+| [AC3 — Categorias e filtros](#ac3--categorias-e-filtros) | Cadastro de categorias, classificação dos lançamentos e filtro por categoria | Implementada |
+
+### AC1 — Cadastro e gerenciamento de lançamentos
+
+- Cadastro e login com autenticação JWT.
+- Consulta e edição de perfil e exclusão da conta com confirmação de senha.
+- Cadastro, listagem, edição e exclusão de receitas e despesas.
+- Busca por descrição e filtro por tipo de lançamento.
+- Persistência no PostgreSQL e isolamento dos dados por usuário.
+
+**Como acessar:** entre na conta e abra **Minhas transações**. Use **Nova transação** para cadastrar um lançamento e as ações da lista para editar ou excluir.
+
+### AC2 — Dashboard financeiro
+
+- Total de receitas, despesas e saldo consultados no banco de dados.
+- Filtros por dia, semana e mês, com uma data de referência.
+- Gráficos de entradas, saídas e comparação entre entradas e saídas por dia.
+- Tabela de detalhamento com valores e saldo diário.
+- Atualização do resumo e apresentação adaptada para celular.
+
+**Como acessar:** abra **Dashboard**, escolha o período e a data e clique em **Aplicar filtro**. Em **Visualização do gráfico**, selecione a análise desejada. O filtro usa a data de cadastro no fuso UTC−3; a semana vai de segunda a domingo.
+
+### AC3 — Categorias e filtros
+
+- Cadastro de categorias próprias de cada usuário, armazenadas no PostgreSQL.
+- Seleção de categoria ao criar ou editar uma transação.
+- Coluna de categoria na listagem de lançamentos.
+- Filtro por categoria combinado com descrição e tipo, atualizando a lista imediatamente.
+- Opção **Sem categoria** para lançamentos não classificados, incluindo os antigos.
+- Validação para impedir o uso de categorias de outras contas e nomes duplicados na mesma conta.
+
+**Como acessar:** em **Nova transação** ou na edição, preencha **Nome da categoria** no painel **Nova categoria** e clique em **Criar categoria**. Ela será selecionada automaticamente. Salve o lançamento e use **Filtrar por categoria** em **Minhas transações**.
+
+**Validação da AC3:** 155 testes HTTP, 7 testes do frontend, teste de integração das categorias com PostgreSQL real e 3 testes de navegador aprovados na implementação.
+
+Detalhes técnicos: [categorias dos lançamentos](#categorias-dos-lançamentos) e [dashboard financeiro](#dashboard-financeiro).
 
 Sobre o projeto acadêmico
 
@@ -78,7 +121,11 @@ Busca de transações por descrição.
 
 Filtro por tipo (Receita ou Despesa).
 
+Cadastro, seleção e filtro por categoria.
+
 Resumo de saldo, receitas e despesas.
+
+Dashboard com filtros por dia, semana e mês, gráficos e detalhamento diário.
 
 Isolamento das transações por usuário.
 
@@ -105,9 +152,11 @@ As principais telas são:
 
 /#/cadastro — criação de conta com confirmação de senha.
 
+/#/dashboard — resumo financeiro, filtros de período e gráficos de entradas e saídas.
+
 /#/transacoes — saldo, receitas, despesas, busca, filtros, edição e exclusão.
 
-/#/transacoes/nova — criação de receita ou despesa.
+/#/transacoes/nova — criação de receita ou despesa, com seleção e cadastro de categoria.
 
 /#/transacoes/editar/:id — edição de transação.
 
@@ -255,9 +304,9 @@ npm test: testes unitários Vitest.
 
 npm run test:e2e: teste HTTP básico com Vitest.
 
-npm run test:http: compila e executa 114 testes HTTP de autenticação, isolamento de usuários, validação e CRUD, com persistência simulada. Não precisa de banco.
+npm run test:http: compila e executa testes HTTP de autenticação, isolamento de usuários, validação, CRUD, dashboard e categorias, com persistência simulada. Não precisa de banco.
 
-npm run test:db: compila e executa dois testes de cadastro, login, isolamento, alteração de dados e exclusão da conta no PostgreSQL local configurado em .env. Exige as migrações aplicadas. Cria duas contas temporárias e transações; remove somente os dados criados pelo próprio teste ao terminar.
+npm run test:db: compila e executa testes de cadastro, login, isolamento, alteração de dados, exclusão da conta e persistência de categorias no PostgreSQL local configurado em .env. Exige as migrações aplicadas. Cria contas e registros temporários; remove somente os dados criados pelo próprio teste ao terminar.
 
 npm run lint: análise Oxlint.
 
@@ -285,7 +334,7 @@ Assinatura e verificação JWT com jose.
 
 Limitação de requisições com express-rate-limit.
 
-# Categorias dos lançamentos
+## Categorias dos lançamentos
 
 No formulário de uma transação, use **Nova categoria** para cadastrar uma categoria
 e selecioná-la automaticamente. A seleção também pode ser alterada ao editar o
@@ -305,7 +354,7 @@ Para atualizar outra instalação, execute `npx prisma migrate deploy` e
 `npx prisma generate` em `backend`, depois reinicie a API. A migração de categorias
 preserva os lançamentos existentes.
 
-# Dashboard financeiro
+## Dashboard financeiro
 
 Acesse **Dashboard** no menu lateral (`/#/dashboard`) para consultar receitas,
 despesas e saldo dos lançamentos do usuário autenticado no período selecionado. Os valores são
