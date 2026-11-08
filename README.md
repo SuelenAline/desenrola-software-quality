@@ -1,8 +1,6 @@
 ﻿# Desenrola — Software Quality
 
- <img width="1901" height="947" alt="image" src="https://github.com/user-attachments/assets/62261735-e0aa-4742-970c-8dce750e9442" />
-
-
+<img width="1886" height="937" alt="image" src="https://github.com/user-attachments/assets/9d03a0f3-9c26-4f9c-9a34-c20b3926157e" />
 
 Sistema de gestão financeira pessoal desenvolvido como aplicação full stack para a disciplina Projeto de Software.
 
@@ -54,6 +52,7 @@ Repositório GitHub: https://github.com/SuelenAline/desenrola-software-quality
 Board do projeto: https://github.com/users/SuelenAline/projects/1/views/1
 
 AC1: [Vídeo do AC1](https://www.youtube.com/watch?v=OIpXee4lDQ8)
+AC2: [Vídeo do AC2](https://www.youtube.com/watch?v=Zt7DHMk4vHc)
 
 ## Integrantes
 
@@ -285,6 +284,7 @@ scrypt e comparação de hashes no Node.js.
 Assinatura e verificação JWT com jose.
 
 Limitação de requisições com express-rate-limit.
+
 # Categorias dos lançamentos
 
 No formulário de uma transação, use **Nova categoria** para cadastrar uma categoria
