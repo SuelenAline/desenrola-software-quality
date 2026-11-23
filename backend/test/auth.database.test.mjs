@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { loadEnvFile } from 'node:process';
 import { existsSync } from 'node:fs';
@@ -19,6 +19,7 @@ if (!['localhost', '127.0.0.1', '[::1]'].includes(target.hostname)) {
 
 it('registers and authenticates two real users, isolates CRUD and cleans its own records', async () => {
   let app, prisma;
+  const sessions = [];
   const runId = randomUUID();
   const emails = [
     `auth-test-${runId}-a@example.com`,
@@ -34,7 +35,6 @@ it('registers and authenticates two real users, isolates CRUD and cleans its own
     await app.init();
     prisma = app.get(PrismaService);
     const http = app.getHttpServer();
-    const sessions = [];
     for (const email of emails) {
       const response = await request(http)
         .post('/auth/register')
@@ -120,6 +120,9 @@ it('registers and authenticates two real users, isolates CRUD and cleans its own
             where: { email: { in: emails } },
             select: { id: true },
           });
+          await tx.activity.deleteMany({
+            where: { actorId: { in: sessions.map((session) => session.user.id) } },
+          });
           await tx.transaction.deleteMany({
             where: { userId: { in: createdUsers.map((user) => user.id) } },
           });
@@ -134,6 +137,7 @@ it('registers and authenticates two real users, isolates CRUD and cleans its own
 
 it('updates credentials, revokes sessions and deletes only the temporary owner in PostgreSQL', async () => {
   let app, prisma;
+  const sessions = [];
   const runId = randomUUID();
   const emails = [
     `account-test-${runId}-a@example.com`,
@@ -151,7 +155,6 @@ it('updates credentials, revokes sessions and deletes only the temporary owner i
     await app.init();
     prisma = app.get(PrismaService);
     const http = app.getHttpServer();
-    const sessions = [];
     for (const email of emails.slice(0, 2)) {
       const response = await request(http)
         .post('/auth/register')
@@ -261,6 +264,9 @@ it('updates credentials, revokes sessions and deletes only the temporary owner i
           const createdUsers = await tx.user.findMany({
             where: { email: { in: emails } },
             select: { id: true },
+          });
+          await tx.activity.deleteMany({
+            where: { actorId: { in: sessions.map((session) => session.user.id) } },
           });
           await tx.transaction.deleteMany({
             where: { userId: { in: createdUsers.map((user) => user.id) } },

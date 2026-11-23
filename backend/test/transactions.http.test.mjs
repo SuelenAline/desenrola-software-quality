@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, it, mock } from 'node:test';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
@@ -30,7 +30,9 @@ describe('HTTP transactions (compiled application, mocked persistence)', () => {
     process.env.JWT_SECRET = randomBytes(32).toString('hex');
     db = {
       category: { findMany: mock.fn(), findFirst: mock.fn(), create: mock.fn() },
-      user: { findUnique: async () => ({ id: 1, tokenVersion: 0 }) },
+      $transaction: async (callback) => callback(db),
+      activity: { create: async () => ({}) },
+      user: { findUnique: async () => ({ id: 1, tokenVersion: 0, active: true, role: 'USER' }) },
       transaction: Object.fromEntries(
         ['findMany', 'findUnique', 'create', 'update', 'delete', 'groupBy'].map((name) => [
           name,

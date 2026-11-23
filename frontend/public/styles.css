@@ -1575,3 +1575,60 @@ dialog .field {
     scroll-behavior: auto !important;
   }
 }
+
+/* Monthly budgets and administration */
+.ac4-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+.ac4-list {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.ac4-period, .ac4-budget-values {
+  display: grid;
+  gap: .75rem;
+}
+.ac4-period { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ac4-budget { padding: clamp(1rem, 3vw, 1.5rem); }
+.ac4-budget-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.ac4-budget-heading h3, .ac4-budget-heading p { margin: 0; overflow-wrap: anywhere; }
+.ac4-budget-values { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
+.ac4-budget-values dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.ac4-budget progress { display: block; width: 100%; height: 1rem; accent-color: currentColor; }
+.budget-status { margin: .45rem 0 0; font-weight: 700; }
+.budget-ok { color: #227044; }
+.budget-warning { color: #886000; }
+.budget-exceeded { color: #aa3636; }
+.admin-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); }
+.ac4-search { display: grid; grid-template-columns: minmax(0, 25rem) auto; align-items: end; justify-content: start; gap: .75rem; }
+.ac4-search .form-error { grid-column: 1 / -1; }
+.admin-history { margin-top: 1.25rem; }
+.admin-user-list, .activity-list { display: grid; padding: 0; list-style: none; }
+.admin-user, .activity-list li {
+  display: grid;
+  align-items: center;
+  gap: .65rem 1rem;
+  border-top: 1px solid #ddd9d0;
+  padding: .85rem 0;
+}
+.admin-user { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) auto auto; }
+.admin-identity, .admin-details, .activity-list li div { display: grid; overflow-wrap: anywhere; }
+.activity-list li { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 850px) {
+  .sidebar nav { flex-wrap: wrap; }
+  .ac4-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .ac4-search, .activity-list li { grid-template-columns: minmax(0, 1fr); }
+  .admin-user { grid-template-columns: minmax(0, 1fr) auto; }
+  .admin-identity, .admin-details { grid-column: 1 / -1; }
+}

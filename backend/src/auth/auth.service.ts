@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { lockAccountManagement, requireOtherActiveAdmin } from '../admin/account-management.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { PasswordService } from './password.service.js';
 import { TokenService, TOKEN_TTL_SECONDS } from './token.service.js';
@@ -16,6 +17,7 @@ export const publicUserSelect = {
   name: true,
   email: true,
   createdAt: true,
+  role: true,
 } satisfies Prisma.UserSelect;
 // A valid dummy hash keeps the expensive comparison on the unknown-email path too.
 const DUMMY_HASH = `scrypt-v1$${'0'.repeat(32)}$${'0'.repeat(128)}`;
@@ -57,8 +59,9 @@ export class AuthService {
     );
     if (!user || !valid)
       throw new UnauthorizedException('E-mail ou senha inválidos.');
-    const { id, name, email, createdAt } = user;
-    return this.session({ id, name, email, createdAt }, user.tokenVersion);
+    if (!user.active) throw new UnauthorizedException('Conta inativa.');
+    const { id, name, email, createdAt, role } = user;
+    return this.session({ id, name, email, createdAt, role }, user.tokenVersion);
   }
 
   async profile(userId: number) {
@@ -102,6 +105,9 @@ export class AuthService {
     const user = await this.confirmPassword(userId, data.currentPassword);
     try {
       await this.prisma.$transaction(async (tx) => {
+        await lockAccountManagement(tx);
+        const account = await tx.user.findUnique({ where: { id: userId }, select: { role: true, active: true } });
+        if (account?.role === 'ADMIN' && account.active) await requireOtherActiveAdmin(tx, userId);
         await tx.transaction.deleteMany({ where: { userId } });
         await tx.user.delete({
           where: { id: userId, passwordHash: user.passwordHash },
@@ -136,12 +142,7 @@ export class AuthService {
   }
 
   private async session(
-    user: {
-      id: number;
-      name: string;
-      email: string;
-      createdAt: Date;
-    },
+    user: Prisma.UserGetPayload<{ select: typeof publicUserSelect }>,
     tokenVersion = 0,
   ) {
     return {

@@ -1,4 +1,4 @@
-﻿import {
+import {
   escapeHtml as esc,
   parseAmount,
   currency,
@@ -170,8 +170,11 @@ function authPage(register) {
     );
   });
 }
+function workspaceLink(section, route, label, symbol, active) {
+  return `<a class="nav-link ${active === section ? "active" : ""}" ${active === section ? 'aria-current="page"' : ""} href="#/${route}">${icon(symbol)} ${label}</a>`;
+}
 function shell(active, content) {
-  app.innerHTML = `<div class="workspace"><aside class="sidebar">${brand()}<div class="nav-label">SEU ESPAÇO</div><nav aria-label="Navegação principal"><a class="nav-link ${active === "dashboard" ? "active" : ""}" ${active === "dashboard" ? 'aria-current="page"' : ""} href="#/dashboard">${icon("wallet")} Dashboard</a><a class="nav-link ${active === "transactions" ? "active" : ""}" ${active === "transactions" ? 'aria-current="page"' : ""} href="#/transacoes">${icon("wallet")} Minhas transações</a><a class="nav-link ${active === "profile" ? "active" : ""}" ${active === "profile" ? 'aria-current="page"' : ""} href="#/perfil">${icon("user")} Meu perfil</a></nav><div class="sidebar-note"><span class="little-spark">✳</span><p>Pequenos hábitos.<br>Grandes mudanças.</p><span>Seu futuro começa no presente.</span></div><div class="sidebar-bottom"><div class="avatar">${esc(user.name.trim().charAt(0).toUpperCase())}</div><div class="user-caption"><strong>${esc(user.name)}</strong><span>Minha conta pessoal</span></div><button class="icon-button" id="logout" aria-label="Sair da conta" title="Sair da conta">${icon("logout")}</button></div></aside><div class="main-column"><header class="topbar"><span>Uma vida financeira mais leve.</span><span class="today">${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</span></header><main id="main" tabindex="-1" class="page">${content}</main><footer class="workspace-footer">Feito para simplificar o seu dia a dia.<span>desenrola.</span></footer></div></div>`;
+  app.innerHTML = `<div class="workspace"><aside class="sidebar">${brand()}<div class="nav-label">SEU ESPAÇO</div><nav aria-label="Navegação principal"><a class="nav-link ${active === "dashboard" ? "active" : ""}" ${active === "dashboard" ? 'aria-current="page"' : ""} href="#/dashboard">${icon("wallet")} Dashboard</a><a class="nav-link ${active === "transactions" ? "active" : ""}" ${active === "transactions" ? 'aria-current="page"' : ""} href="#/transacoes">${icon("wallet")} Minhas transações</a><a class="nav-link ${active === "profile" ? "active" : ""}" ${active === "profile" ? 'aria-current="page"' : ""} href="#/perfil">${icon("user")} Meu perfil</a>${workspaceLink("limits", "limites", "Limites de gastos", "wallet", active)}${user.role === "ADMIN" ? workspaceLink("admin", "admin", "Administração", "lock", active) : ""}</nav><div class="sidebar-note"><span class="little-spark">✳</span><p>Pequenos hábitos.<br>Grandes mudanças.</p><span>Seu futuro começa no presente.</span></div><div class="sidebar-bottom"><div class="avatar">${esc(user.name.trim().charAt(0).toUpperCase())}</div><div class="user-caption"><strong>${esc(user.name)}</strong><span>Minha conta pessoal</span></div><button class="icon-button" id="logout" aria-label="Sair da conta" title="Sair da conta">${icon("logout")}</button></div></aside><div class="main-column"><header class="topbar"><span>Uma vida financeira mais leve.</span><span class="today">${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</span></header><main id="main" tabindex="-1" class="page">${content}</main><footer class="workspace-footer">Feito para simplificar o seu dia a dia.<span>desenrola.</span></footer></div></div>`;
   document.querySelector("#logout").onclick = () =>
     logout("Você saiu da conta. Até a próxima!");
 }
@@ -352,6 +355,201 @@ async function transactionForm(id, current) {
     notify(id ? "Transação atualizada." : "Transação cadastrada!");
   });
 }
+async function limitsPage(current, id) {
+  document.title = "Limites de gastos · Desenrola";
+  shell("limits", '<div class="panel loading" role="status">Carregando limites…</div>');
+  const [categories, limits] = await Promise.all([api("/categories"), api("/limits")]);
+  if (current !== generation) return;
+  const editing = limits.find((limit) => limit.id === id);
+  if (id && !editing) throw new Error("Limite não encontrado.");
+  const [year, month] = dashboardToday().split("-").map(Number);
+  const monthNames = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
+  const monthName = (value) => monthNames.format(new Date(Date.UTC(2020, value - 1, 1)));
+  const monthOptions = Array.from({ length: 12 }, (_, index) => {
+    const value = index + 1;
+    return `<option value="${value}" ${value === (editing?.month ?? month) ? "selected" : ""}>${monthName(value)}</option>`;
+  }).join("");
+  const form = categories.length ? `
+    <form id="limit-form">
+      <label class="field">Categoria de despesa<select name="categoryId" required>
+        <option value="">Selecione uma categoria</option>${categoryOptions(categories, editing?.categoryId)}
+      </select></label>
+      <div class="ac4-period">
+        <label class="field">Mês<select name="month">${monthOptions}</select></label>
+        <label class="field">Ano<input name="year" type="number" min="1900" max="9998" required value="${editing?.year ?? year}"></label>
+      </div>
+      <label class="field">Limite mensal (R$)<input name="amount" inputmode="decimal" required placeholder="0,00" value="${editing?.amount.replace(".", ",") ?? ""}"></label>
+      ${errorBox}
+      <div class="form-actions">
+        ${editing ? '<a class="button secondary" href="#/limites">Cancelar</a>' : ""}
+        <button class="button primary" type="submit">${editing ? "Salvar alterações" : "Cadastrar limite"}</button>
+      </div>
+    </form>` : '<p class="muted">Crie uma categoria para começar.</p><a class="button secondary" href="#/transacoes/nova">Criar categoria</a>';
+
+  const cards = limits.map((limit) => {
+    const statusText = { ok: "Dentro do limite", warning: "Atenção ao limite", exceeded: "Limite excedido" };
+    const category = esc(limit.category.name);
+    const period = `${monthName(limit.month)} de ${limit.year}`;
+    return `<article class="panel ac4-budget">
+      <div class="ac4-budget-heading">
+        <div><h3>${category}</h3><p class="muted">${period}</p></div>
+        <a class="button secondary" aria-label="Editar limite de ${category}, ${period}" href="#/limites/editar/${limit.id}">Editar</a>
+      </div>
+      <dl class="ac4-budget-values">
+        <div><dt>Limite</dt><dd>${currency(limit.amount)}</dd></div>
+        <div><dt>Utilizado</dt><dd>${currency(limit.spent)}</dd></div>
+        <div><dt>Disponível</dt><dd>${currency(limit.available)}</dd></div>
+      </dl>
+      <progress class="budget-${limit.status}" max="100" value="${Math.min(100, Number(limit.percentage))}" aria-label="Orçamento utilizado em ${category}, ${period}"></progress>
+      <p class="budget-status budget-${limit.status}">${statusText[limit.status]} · ${Number(limit.percentage).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</p>
+      ${limit.status === "exceeded" ? `<p class="budget-status budget-exceeded">Você ultrapassou o limite em ${currency(limit.exceeded)}.</p>` : ""}
+    </article>`;
+  }).join("");
+
+  shell("limits", heading("ORÇAMENTO", "Limites de gastos", "Acompanhe suas despesas por categoria e mês.") +
+    `<div class="ac4-layout">
+      <section class="panel form-panel"><h2>${editing ? "Editar limite" : "Novo limite"}</h2>${form}</section>
+      <section class="ac4-list"><h2>Limites cadastrados</h2>${cards || '<p class="panel empty-state">Você ainda não cadastrou limites.</p>'}</section>
+    </div>`);
+  const element = document.querySelector("#limit-form");
+  if (!element) return;
+  bindForm(element, async (values) => {
+    const data = {
+      categoryId: Number(values.get("categoryId")),
+      month: Number(values.get("month")),
+      year: Number(values.get("year")),
+      amount: parseAmount(values.get("amount")),
+    };
+    if (data.amount <= 0) throw new Error("Informe um limite maior que zero.");
+    await api(editing ? `/limits/${editing.id}` : "/limits", { method: editing ? "PUT" : "POST", data });
+    if (current !== generation) return;
+    notify(editing ? "Limite atualizado." : "Limite cadastrado.");
+    if (editing) location.hash = "/limites";
+    else await render();
+  });
+}
+
+const activityLabels = {
+  TRANSACTION_CREATED: "Cadastro de lançamento",
+  TRANSACTION_UPDATED: "Edição de lançamento",
+  TRANSACTION_DELETED: "Exclusão de lançamento",
+  CATEGORY_CREATED: "Cadastro de categoria",
+  ACCOUNT_ACTIVATED: "Reativação de conta",
+  ACCOUNT_DEACTIVATED: "Desativação de conta",
+};
+const activityDate = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+async function adminPage(current) {
+  document.title = "Administração · Desenrola";
+  const title = heading("GESTÃO DO SISTEMA", "Painel administrativo", "Consulte contas e acompanhe as atividades.");
+  if (user.role !== "ADMIN") {
+    shell("admin", '<div class="panel empty-state"><h1>Acesso restrito</h1><p role="alert">Área exclusiva para administradores.</p></div>');
+    return;
+  }
+  shell("admin", title + `
+    <section id="admin-summary" class="summary admin-summary" aria-label="Indicadores administrativos" aria-live="polite"></section>
+    <section class="panel form-panel"><h2>Usuários cadastrados</h2>
+      <form id="admin-search" class="ac4-search">
+        ${field("Buscar por nome ou e-mail", "search", { type: "search", required: false, max: 254 })}
+        <button class="button secondary" type="submit">Pesquisar</button>${errorBox}
+      </form>
+      <div id="admin-users" aria-live="polite"></div>
+    </section>
+    <section class="panel form-panel admin-history"><h2>Histórico de atividades</h2>
+      <ol id="activity-list" class="activity-list"></ol>
+      <p id="activity-feedback" role="status" hidden></p>
+      <button id="more-activities" class="button secondary" type="button" hidden>Carregar mais atividades</button>
+    </section>`);
+
+  const summary = document.querySelector("#admin-summary");
+  const accounts = document.querySelector("#admin-users");
+  const history = document.querySelector("#activity-list");
+  const feedback = document.querySelector("#activity-feedback");
+  const more = document.querySelector("#more-activities");
+  let search = "";
+  let usersRequest = 0;
+  let historyRequest = 0;
+
+  async function loadSummary() {
+    const data = await api("/admin/summary");
+    if (current !== generation) return;
+    summary.innerHTML = [
+      ["Usuários cadastrados", data.totalUsers],
+      ["Usuários ativos", data.activeUsers],
+      ["Usuários inativos", data.inactiveUsers],
+      ["Lançamentos cadastrados", data.totalTransactions],
+    ].map(([label, number]) => `<article class="summary-card"><div>${label}</div><strong>${number}</strong></article>`).join("");
+  }
+
+  async function loadUsers() {
+    const version = ++usersRequest;
+    const items = await api(`/admin/users?${new URLSearchParams({ search })}`);
+    if (current !== generation || version !== usersRequest) return;
+    accounts.innerHTML = items.length ? `<ul class="admin-user-list">${items.map((account) => `
+      <li class="admin-user">
+        <div class="admin-identity"><strong>${esc(account.name)}</strong><span>${esc(account.email)}</span></div>
+        <div class="admin-details"><span>${account.role === "ADMIN" ? "Administrador" : "Usuário"}</span>
+          <span>Cadastro em ${date(account.createdAt)}</span><span>Lançamentos: ${account._count.transactions}</span></div>
+        <span class="pill ${account.active ? "income" : "expense"}">${account.active ? "Ativa" : "Inativa"}</span>
+        ${account.id === user.id ? '<span class="muted">Sua conta</span>' :
+          `<button class="button secondary account-status" data-id="${account.id}" aria-label="${account.active ? "Desativar" : "Reativar"} conta de ${esc(account.name)}">${account.active ? "Desativar" : "Reativar"}</button>`}
+      </li>`).join("")}</ul>` : '<p class="muted">Nenhum usuário encontrado.</p>';
+    accounts.querySelectorAll(".account-status").forEach((button) => {
+      const account = items.find((item) => item.id === Number(button.dataset.id));
+      button.onclick = () => confirmDialog({
+        title: account.active ? "Desativar conta?" : "Reativar conta?",
+        description: account.active
+          ? `${account.name} perderá o acesso. Seus lançamentos serão preservados.`
+          : `${account.name} poderá entrar novamente.`,
+        label: account.active ? "Desativar conta" : "Reativar conta",
+        action: async () => {
+          await api(`/admin/users/${account.id}/status`, { method: "PATCH", data: { active: !account.active } });
+          if (current !== generation) return;
+          notify(account.active ? "Conta desativada." : "Conta reativada.");
+          await Promise.all([loadSummary(), loadUsers(), loadActivities()]).catch((error) => notify(error.message));
+        },
+      });
+    });
+  }
+
+  async function loadActivities(before) {
+    const version = ++historyRequest;
+    more.disabled = true;
+    feedback.hidden = true;
+    try {
+      const data = await api(before ? `/admin/activities?before=${before}` : "/admin/activities");
+      if (current !== generation || version !== historyRequest) return;
+      const rows = data.items.map((item) => `<li>
+        <div><strong>${esc(activityLabels[item.action] ?? item.action)}</strong>
+          <span>${esc(item.actor?.name ?? "Conta excluída")} (#${item.actorId}) · Registro #${item.recordId}</span></div>
+        <time datetime="${esc(item.createdAt)}">${activityDate.format(new Date(item.createdAt))}</time>
+      </li>`).join("");
+      if (before) history.insertAdjacentHTML("beforeend", rows);
+      else history.innerHTML = rows;
+      if (!history.children.length) {
+        feedback.textContent = "Nenhuma atividade registrada.";
+        feedback.hidden = false;
+      }
+      more.hidden = !data.next;
+      more.onclick = () => loadActivities(data.next);
+    } catch (error) {
+      if (current !== generation || version !== historyRequest) return;
+      feedback.textContent = error.message;
+      feedback.hidden = false;
+      more.hidden = false;
+      more.onclick = () => loadActivities(before);
+    } finally {
+      if (version === historyRequest) more.disabled = false;
+    }
+  }
+
+  bindForm(document.querySelector("#admin-search"), async (values) => {
+    search = values.get("search").trim();
+    await loadUsers();
+  });
+  await Promise.all([loadSummary(), loadUsers(), loadActivities()]);
+}
+
 function profilePage() {
   document.title = "Meu perfil · Desenrola";
   shell(
@@ -445,6 +643,10 @@ async function render() {
   }
   try {
     if (route === "/dashboard") await dashboardPage(current);
+    else if (route === "/limites") await limitsPage(current);
+    else if (/^\/limites\/editar\/[1-9]\d*$/.test(route))
+      await limitsPage(current, Number(route.split("/").pop()));
+    else if (route === "/admin") await adminPage(current);
     else if (route === "/perfil") profilePage();
     else if (route === "/transacoes/nova") await transactionForm(null, current);
     else if (/^\/transacoes\/editar\/[1-9]\d*$/.test(route))

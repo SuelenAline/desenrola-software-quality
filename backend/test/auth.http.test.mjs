@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { afterEach, before, beforeEach, describe, it } from 'node:test';
 import { Test } from '@nestjs/testing';
@@ -45,6 +45,8 @@ describe('Authentication and transaction ownership (mocked persistence)', () => 
         email: 'owner@example.com',
         passwordHash: storedHash,
         tokenVersion: 0,
+        active: true,
+        role: 'USER',
         createdAt: new Date(),
       },
       {
@@ -53,6 +55,8 @@ describe('Authentication and transaction ownership (mocked persistence)', () => 
         email: 'other@example.com',
         passwordHash: storedHash,
         tokenVersion: 0,
+        active: true,
+        role: 'USER',
         createdAt: new Date(),
       },
     ];
@@ -64,6 +68,8 @@ describe('Authentication and transaction ownership (mocked persistence)', () => 
     const matches = (row, where) =>
       Object.entries(where).every(([key, value]) => row[key] === value);
     db = {
+      $queryRaw: async () => [],
+      activity: { create: async () => ({}) },
       $transaction: async (callback) => {
         const previousUsers = structuredClone(users);
         const previousTransactions = structuredClone(transactions);
@@ -105,6 +111,8 @@ describe('Authentication and transaction ownership (mocked persistence)', () => 
           const user = {
             id: users.length + 1,
             tokenVersion: 0,
+            active: true,
+            role: 'USER',
             ...data,
             createdAt: new Date(),
           };
@@ -407,8 +415,10 @@ describe('Authentication and transaction ownership (mocked persistence)', () => 
       'email',
       'id',
       'name',
+      'role',
     ]);
     assert.equal(response.body.id, 1);
+    assert.equal(response.body.role, 'USER');
   });
   for (const method of ['get', 'patch', 'delete']) {
     it(method + ' profile requires a token', async () => {
