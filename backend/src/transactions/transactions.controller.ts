@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   Delete,
@@ -12,6 +12,7 @@
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { CreateTransactionDto } from './transactions.dto.js';
+import { auditedWrite } from '../prisma/audited-write.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TransactionIdPipe } from './transaction-id.pipe.js';
 
@@ -81,7 +82,7 @@ export class TransactionsController {
   ) {
     await this.validateCategory(data.categoryId, userId);
     try {
-      return await this.prisma.transaction.update({
+      return await auditedWrite(this.prisma, userId, 'TRANSACTION_UPDATED', tx => tx.transaction.update({
         where: { id: Number(id), userId },
         data: {
           description: data.description,
@@ -89,7 +90,7 @@ export class TransactionsController {
           type: data.type,
           ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
         },
-      });
+      }));
     } catch (error) {
       this.handleWriteError(error);
     }
@@ -101,9 +102,9 @@ export class TransactionsController {
     @CurrentUserId() userId: number,
   ) {
     try {
-      return await this.prisma.transaction.delete({
+      return await auditedWrite(this.prisma, userId, 'TRANSACTION_DELETED', tx => tx.transaction.delete({
         where: { id: Number(id), userId },
-      });
+      }));
     } catch (error) {
       this.handleWriteError(error);
     }
@@ -115,7 +116,7 @@ export class TransactionsController {
     @CurrentUserId() userId: number,
   ) {
     await this.validateCategory(data.categoryId, userId);
-    return this.prisma.transaction.create({
+    return auditedWrite(this.prisma, userId, 'TRANSACTION_CREATED', tx => tx.transaction.create({
       data: {
         userId,
         description: data.description,
@@ -123,7 +124,7 @@ export class TransactionsController {
         type: data.type,
         ...(data.categoryId !== undefined ? { categoryId: data.categoryId } : {}),
       },
-    });
+    }));
   }
 
   private async validateCategory(categoryId: number | null | undefined, userId: number) {

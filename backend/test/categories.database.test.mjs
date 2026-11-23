@@ -46,7 +46,9 @@ it('persists private categories, prevents cross-account use and clears assignmen
     if (db) {
       await db.$transaction(async tx => {
         const users = await tx.user.findMany({ where: { email: { in: emails } }, select: { id: true } });
-        await tx.transaction.deleteMany({ where: { userId: { in: users.map(user => user.id) } } });
+        const ids = users.map(user => user.id);
+        await tx.activity.deleteMany({ where: { actorId: { in: ids } } });
+        await tx.transaction.deleteMany({ where: { userId: { in: ids } } });
         await tx.user.deleteMany({ where: { email: { in: emails } } });
       });
     }

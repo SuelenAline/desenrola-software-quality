@@ -24,7 +24,7 @@
     "test:http": "npm run build && node --test test/*.http.test.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test:db": "npm run build && node --test test/*.database.test.mjs"
+    "test:db": "npm run build && node --test --test-concurrency=1 test/*.database.test.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

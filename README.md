@@ -1,4 +1,4 @@
-﻿# Desenrola — Software Quality
+# Desenrola — Software Quality
 
 <img width="1886" height="937" alt="image" src="https://github.com/user-attachments/assets/9d03a0f3-9c26-4f9c-9a34-c20b3926157e" />
 
@@ -15,6 +15,7 @@ A aplicação possui autenticação de usuários, gerenciamento de perfil, CRUD 
 | [AC1 — Cadastro e gerenciamento de lançamentos](#ac1--cadastro-e-gerenciamento-de-lançamentos) | Conta, autenticação e cadastro, consulta, edição e exclusão de receitas e despesas | Implementada |
 | [AC2 — Dashboard financeiro](#ac2--dashboard-financeiro) | Totais, filtros por dia, semana e mês e gráficos diários | Implementada |
 | [AC3 — Categorias e filtros](#ac3--categorias-e-filtros) | Cadastro de categorias, classificação dos lançamentos e filtro por categoria | Implementada |
+| [AC4 — Limites mensais e painel administrativo](#ac4--limites-mensais-e-painel-administrativo) | Orçamento por categoria, gestão de contas e histórico de atividades | Implementada |
 
 ### AC1 — Cadastro e gerenciamento de lançamentos
 
@@ -50,6 +51,66 @@ A aplicação possui autenticação de usuários, gerenciamento de perfil, CRUD 
 **Validação da AC3:** 155 testes HTTP, 7 testes do frontend, teste de integração das categorias com PostgreSQL real e 3 testes de navegador aprovados na implementação.
 
 Detalhes técnicos: [categorias dos lançamentos](#categorias-dos-lançamentos) e [dashboard financeiro](#dashboard-financeiro).
+
+## AC4 — Limites mensais e painel administrativo
+
+Em **Limites de gastos** (`/#/limites`), escolha uma categoria, o mês e o ano e informe um valor positivo em reais. Use **Editar** no cartão para alterar qualquer um desses campos. Cada conta pode ter um limite por categoria e mês. As categorias das entregas anteriores são compartilhadas por receitas e despesas. O orçamento soma apenas os lançamentos do tipo **Despesa** pela data de cadastro em UTC−3, como no dashboard financeiro.
+
+A barra fica verde abaixo de 80%, amarela de 80% a 100% e vermelha acima de 100%. O cartão mostra o saldo, inclusive quando negativo, e informa quanto foi excedido. O cálculo consulta as despesas do PostgreSQL sempre que a tela é aberta ou um limite é salvo. Ao voltar de um cadastro, edição ou exclusão de transação, os valores refletem a alteração.
+
+Em **Administração** (`/#/admin`), um administrador pode pesquisar por nome ou e-mail, consultar a situação e a quantidade de lançamentos de cada conta e desativar ou reativar usuários. A desativação preserva os dados e invalida as sessões existentes. Após reativar a conta, é preciso fazer um novo login. O painel apresenta totais do PostgreSQL e o histórico em ordem decrescente de data, com até 50 atividades por página. O histórico guarda o responsável, a ação, a data e o ID do registro. Se a conta responsável for excluída, a atividade permanece identificada na tela como **Conta excluída** e conserva o ID do responsável.
+
+### Atualizar uma instalação existente
+
+Execute em `backend` com `DATABASE_URL` configurada para a instalação.
+
+```sh
+npm ci
+npm exec -- prisma migrate deploy
+npm run prisma:generate
+npm run start:dev
+```
+
+A migração `20261121120000_ac4` mantém contas, categorias e lançamentos existentes. As contas existentes recebem `USER` e começam ativas. O histórico passa a registrar operações efetuadas a partir da instalação da AC4.
+
+### Promover uma conta a administradora
+
+Cadastre a conta pelo fluxo normal. Execute o comando em `backend` após aplicar a migração e gerar o cliente Prisma em um ambiente com acesso autorizado ao banco da instalação.
+
+```sh
+node scripts/promote-admin.mjs pessoa@exemplo.com
+```
+
+Informe o e-mail da conta ativa que deve receber o acesso. O script normaliza o e-mail, atualiza a conta por meio do Prisma e revoga suas sessões anteriores. Entre novamente para abrir **Administração**. O cadastro público atribui `USER` e a API valida o perfil e a situação da conta em cada chamada protegida.
+
+### API da AC4
+
+| Método e rota | Resultado |
+| --- | --- |
+| `GET /limits` | Limites da conta com total usado, saldo, percentual, situação e excedente |
+| `POST /limits` | Cadastro do limite |
+| `PUT /limits/:id` | Edição de um limite da conta |
+| `GET /admin/users?search=texto` | Consulta de usuários por nome ou e-mail |
+| `PATCH /admin/users/:id/status` | Alteração da situação com `{"active":false}` ou `{"active":true}` |
+| `GET /admin/summary` | Totais de contas cadastradas, ativas e inativas e de lançamentos |
+| `GET /admin/activities?before=ID` | Histórico com `items` e `next`; omita `before` na primeira consulta |
+
+Envie o token Bearer nas rotas da tabela. Em limites, o corpo de cadastro e edição recebe `categoryId`, `month`, `year` e `amount` (número com até duas casas decimais). Um limite duplicado retorna 409. As rotas de administração exigem perfil `ADMIN` e retornam 403 para um usuário ativo sem essa permissão.
+
+### Validação da AC4
+
+- Em `backend`, `npm run test:db` verifica cadastro, edição e isolamento dos limites, as faixas de gastos, o recálculo após alterações em lançamentos, a promoção, as permissões, os indicadores, a revogação de sessões e o histórico no PostgreSQL local.
+- Em `frontend`, `npm run test:e2e` verifica os formulários e alertas de limites, a navegação de usuário comum, o uso do painel em telas de 320 a 1280 px, a pesquisa, as alterações de situação e o histórico pelo navegador.
+
+### Roteiro para o vídeo da entrega final
+
+| Tempo | Demonstração |
+| --- | --- |
+| 0:00–0:25 | Apresente o Desenrola e as três camadas. Mostre **Minhas transações** e explique que a AC4 adiciona limites mensais e administração. |
+| 0:25–1:20 | Entre em uma conta comum. Crie a categoria **Alimentação** no formulário de transação. Volte ao menu **Limites de gastos**, selecione a categoria e o mês atual, cadastre um limite de R$ 100 e mostre o cartão verde. |
+| 1:20–2:00 | Cadastre uma despesa de R$ 80 em Alimentação e mostre o cartão amarelo. Edite a despesa para R$ 120, volte aos limites e mostre o saldo de −R$ 20 e a mensagem de excesso. Edite o limite para R$ 150 e exclua a despesa para demonstrar o recálculo. |
+| 2:00–3:05 | Em outra sessão, entre como administrador. Mostre os quatro indicadores, encontre a conta comum por nome ou e-mail e desative-a. Na sessão da conta comum, abra uma tela protegida para demonstrar o bloqueio. Reative a conta e mostre que um novo login funciona. |
+| 3:05–3:40 | Abra o histórico com as ações da demonstração, mostre o painel em largura de celular e encerre mencionando a persistência no PostgreSQL e os testes da entrega. |
 
 Sobre o projeto acadêmico
 

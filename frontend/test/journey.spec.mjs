@@ -1,4 +1,4 @@
-﻿import { test, expect } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { loadEnvFile } from "node:process";
@@ -12,6 +12,7 @@ test("complete account and transaction journey against the real local API", asyn
   const updatedEmail = `ui-updated-${run}@example.com`;
   const password = `UI-test-${run}`;
   const newPassword = `Changed-${run}`;
+  let actorId;
   page.on("pageerror", (error) => errors.push(error.message));
   try {
     await page.goto("/#/login");
@@ -32,10 +33,16 @@ test("complete account and transaction journey against the real local API", asyn
       "As senhas não coincidem",
     );
     await page.getByLabel("Confirme sua senha").fill(password);
+    const registration = page.waitForResponse((response) => response.url().endsWith("/api/auth/register") && response.status() === 201);
     await page.getByRole("button", { name: "Criar minha conta" }).click();
+    actorId = (await (await registration).json()).user.id;
     await expect(
       page.getByRole("heading", { name: "Seu primeiro passo começa aqui" }),
     ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Administração" })).toHaveCount(0);
+    await page.evaluate(() => { location.hash = "/admin"; });
+    await expect(page.getByRole("heading", { name: "Acesso restrito" })).toBeVisible();
+    await page.getByRole("link", { name: "Minhas transações" }).click();
     await page
       .getByRole("link", { name: "Nova transação", exact: true })
       .click();
@@ -61,6 +68,22 @@ test("complete account and transaction journey against the real local API", asyn
       .getByRole("textbox", { name: "Valor", exact: true })
       .fill("3200,00");
     await page.getByRole("button", { name: "Cadastrar transação" }).click();
+    await expect(page.locator(".balance strong")).toContainText("3.074,10");
+    await page.getByRole("link", { name: "Limites de gastos" }).click();
+    await page.getByLabel("Categoria de despesa").selectOption({ label: "Alimentação" });
+    await page.getByLabel("Limite mensal (R$)").fill("150,00");
+    await page.getByRole("button", { name: "Cadastrar limite" }).click();
+    await expect(page.getByText("Atenção ao limite", { exact: false })).toBeVisible();
+    await expect(page.getByText(/125,90/)).toBeVisible();
+    await page.getByRole("link", { name: /Editar limite de Alimentação/ }).click();
+    await expect(page.getByRole("heading", { name: "Editar limite", exact: true })).toBeVisible();
+    await page.getByLabel("Limite mensal (R$)").fill("100,00");
+    await page.getByRole("button", { name: "Salvar alterações" }).click();
+    await expect(page.getByText(/Você ultrapassou o limite em.*25,90/)).toBeVisible();
+    await page.setViewportSize({ width: 320, height: 750 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.getByRole("link", { name: "Minhas transações" }).click();
     await expect(page.locator(".balance strong")).toContainText("3.074,10");
     await page.screenshot({
       path: "test-results/transactions-desktop.png",
@@ -103,6 +126,9 @@ test("complete account and transaction journey against the real local API", asyn
       .fill("150,25");
     await page.getByRole("button", { name: "Salvar alterações" }).click();
     await expect(page.locator(".balance strong")).toContainText("3.049,75");
+    await page.getByRole("link", { name: "Limites de gastos" }).click();
+    await expect(page.getByText(/Você ultrapassou o limite em.*50,25/)).toBeVisible();
+    await page.getByRole("link", { name: "Minhas transações" }).click();
     await page
       .getByRole("button", { name: "Excluir Salário", exact: true })
       .click();
@@ -210,6 +236,7 @@ test("complete account and transaction journey against the real local API", asyn
           where: { email: { in: [email, updatedEmail] } },
           select: { id: true },
         });
+        if (actorId) await tx.activity.deleteMany({ where: { actorId } });
         await tx.transaction.deleteMany({
           where: { userId: { in: users.map((user) => user.id) } },
         });
